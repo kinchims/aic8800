@@ -1,68 +1,32 @@
--include .github/local/Makefile.local
--include Makefile.extra
+# Variables
+BUILD_DIR = src/SDIO/driver_fw/driver/aic8800
+TARGET = aic8800_fdrv.ko
 
-PROJECT ?= aic8800
-CUSTOM_DEBUILD_ENV ?= DEB_BUILD_OPTIONS='parallel=1'
-
-.DEFAULT_GOAL := all
-.PHONY: all
+# Default target to build the driver
 all: build
 
-.PHONY: devcontainer_setup
-devcontainer_setup:
-	sudo dpkg --add-architecture arm64
-	sudo apt-get update
-	sudo apt-get build-dep . -y
+# Build the driver
+build:
+	@echo "Compiling the driver..."
+	cd $(BUILD_DIR) && make
 
-#
-# Test
-#
-.PHONY: test
-test:
+# Install the driver using the install script
+install: build
+	@echo "Installing the driver using install_setup.sh..."
+	cd $(BUILD_DIR) && make install
+	@bash $(INSTALL_SCRIPT)
 
-#
-# Build
-#
-.PHONY: build
-build: pre_build main_build post_build
+# Uninstall the driver using the uninstall script
+uninstall:
+	@echo "Uninstalling the driver using uninstall_setup.sh..."
+	cd $(BUILD_DIR) && make uninstall
+	@bash $(UNINSTALL_SCRIPT)
 
-.PHONY: pre_build
-pre_build:
-	# Fix file permissions when created from template
-	chmod +x debian/rules
+# Clean the build artifacts
+clean:
+	@echo "Cleaning the build artifacts..."
+	cd $(BUILD_DIR) && make clean
+	$(MAKE) -C $(BUILD_DIR) clean
 
-.PHONY: main_build
-main_build:
-
-.PHONY: post_build
-post_build:
-
-#
-# Clean
-#
-.PHONY: distclean
-distclean: clean
-
-.PHONY: clean
-clean: clean-deb
-
-.PHONY: clean-deb
-clean-deb:
-	rm -rf debian/.debhelper debian/$(PROJECT)*/ debian/tmp/ debian/debhelper-build-stamp debian/files debian/*.debhelper.log debian/*.*.debhelper debian/*.substvars
-
-#
-# Release
-#
-.PHONY: dch
-dch: debian/changelog
-	gbp dch --ignore-branch --multimaint-merge --release --spawn-editor=never \
-	--git-log='--no-merges --perl-regexp --invert-grep --grep=^(chore:\stemplates\sgenerated)' \
-	--dch-opt=--upstream --commit --commit-msg="feat: release %(version)s"
-
-.PHONY: deb
-deb: debian
-	$(CUSTOM_DEBUILD_ENV) debuild --no-lintian --lintian-hook "lintian --fail-on error,warning --suppress-tags-from-file $(PWD)/debian/common-lintian-overrides -- %p_%v_*.changes" --no-sign -b -aarm64 -Pcross
-
-.PHONY: release
-release:
-	gh workflow run .github/workflows/new_version.yaml --ref $(shell git branch --show-current)
+# Phony targets to avoid conflicts with files
+.PHONY: all build install uninstall clean
