@@ -18,7 +18,7 @@ all: modules
 modules:
 	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(TARGET_PREFIX) modules
 
-install:
+modules_install:
 	mkdir -p $(MODDESTDIR)
 	install -p -m 644 aic8800_bsp/aic8800_bsp.ko  $(MODDESTDIR)/
 	install -p -m 644 aic8800_fdrv/aic8800_fdrv.ko  $(MODDESTDIR)/
