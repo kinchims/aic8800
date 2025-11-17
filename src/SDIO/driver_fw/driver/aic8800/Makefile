@@ -19,10 +19,10 @@ modules:
 	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(TARGET_PREFIX) modules
 
 modules_install:
-	mkdir -p $(MODDESTDIR)
-	install -p -m 644 aic8800_bsp/aic8800_bsp.ko  $(MODDESTDIR)/
-	install -p -m 644 aic8800_fdrv/aic8800_fdrv.ko  $(MODDESTDIR)/
-	install -p -m 644 aic8800_btlpm/aic8800_btlpm.ko  $(MODDESTDIR)/
+	install -d $(MODDESTDIR)
+	install -m 0644 aic8800_bsp/aic8800_bsp.ko  $(MODDESTDIR)/
+	install -m 0644 aic8800_fdrv/aic8800_fdrv.ko  $(MODDESTDIR)/
+	install -m 0644 aic8800_btlpm/aic8800_btlpm.ko  $(MODDESTDIR)/
 
 # Clean all submodules
 clean:
