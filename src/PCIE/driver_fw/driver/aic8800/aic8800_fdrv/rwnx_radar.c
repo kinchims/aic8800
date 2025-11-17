@@ -1407,7 +1407,7 @@ static void rwnx_radar_cac_work(struct work_struct *ws)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
                        NL80211_RADAR_CAC_FINISHED, GFP_KERNEL, 0);
 #else
-                       NL80211_RADAR_CAC_FINISHED, GFP_KERNEL);
+                       NL80211_RADAR_CAC_FINISHED, GFP_KERNEL); 
 #endif
     rwnx_send_apm_stop_cac_req(rwnx_hw, radar->cac_vif);
     rwnx_chanctx_unlink(radar->cac_vif);
