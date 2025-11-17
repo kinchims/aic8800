@@ -3274,8 +3274,13 @@ end:
  * @change_beacon: Change the beacon parameters for an access point mode
  *	interface. This should reject the call when AP mode wasn't started.
  */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 7, 0)
 static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
-									   struct cfg80211_beacon_data *info)
+                                       struct cfg80211_ap_update *info)
+#else
+static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
+                                       struct cfg80211_beacon_data *info)
+#endif
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
 	struct rwnx_vif *vif = netdev_priv(dev);
@@ -3348,8 +3353,12 @@ static int rwnx_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
  * Also called internaly with chandef set to NULL simply to retrieve the channel
  * configured at firmware level.
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy, struct net_device *dev,
+                                             struct cfg80211_chan_def *chandef)
+#else
 static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
-											 struct cfg80211_chan_def *chandef)
+                                             struct cfg80211_chan_def *chandef)
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
 	struct rwnx_vif *rwnx_vif;
