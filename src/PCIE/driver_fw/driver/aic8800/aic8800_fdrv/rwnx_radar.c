@@ -1389,26 +1389,30 @@ static void rwnx_radar_process_pulse(struct work_struct *ws)
 #ifdef CONFIG_RWNX_FULLMAC
 static void rwnx_radar_cac_work(struct work_struct *ws)
 {
-	struct delayed_work *dw = container_of(ws, struct delayed_work, work);
-	struct rwnx_radar *radar = container_of(dw, struct rwnx_radar, cac_work);
-	struct rwnx_hw *rwnx_hw = container_of(radar, struct rwnx_hw, radar);
-	struct rwnx_chanctx *ctxt;
+    struct delayed_work *dw = container_of(ws, struct delayed_work, work);
+    struct rwnx_radar *radar = container_of(dw, struct rwnx_radar, cac_work);
+    struct rwnx_hw *rwnx_hw = container_of(radar, struct rwnx_hw, radar);
+    struct rwnx_chanctx *ctxt;
 
-	if (radar->cac_vif == NULL) {
-		WARN(1, "CAC finished but no vif set");
-		return;
-	}
+    if (radar->cac_vif == NULL) {
+        WARN(1, "CAC finished but no vif set");
+        return;
+    }
 
-	ctxt = &rwnx_hw->chanctx_table[radar->cac_vif->ch_index];
-	cfg80211_cac_event(radar->cac_vif->ndev,
-					#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
-					   &ctxt->chan_def,
-					#endif
-					   NL80211_RADAR_CAC_FINISHED, GFP_KERNEL);
-	rwnx_send_apm_stop_cac_req(rwnx_hw, radar->cac_vif);
-	rwnx_chanctx_unlink(radar->cac_vif);
+    ctxt = &rwnx_hw->chanctx_table[radar->cac_vif->ch_index];
+    cfg80211_cac_event(radar->cac_vif->ndev,
+                    #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 14, 0)
+                       &ctxt->chan_def,
+                    #endif
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+                       NL80211_RADAR_CAC_FINISHED, GFP_KERNEL, 0);
+#else
+                       NL80211_RADAR_CAC_FINISHED, GFP_KERNEL);
+#endif
+    rwnx_send_apm_stop_cac_req(rwnx_hw, radar->cac_vif);
+    rwnx_chanctx_unlink(radar->cac_vif);
 
-	radar->cac_vif = NULL;
+    radar->cac_vif = NULL;
 }
 #endif /* CONFIG_RWNX_FULLMAC */
 
