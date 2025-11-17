@@ -3471,11 +3471,20 @@ static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
 int rwnx_cfg80211_set_monitor_channel_(struct wiphy *wiphy,
-                                             struct cfg80211_chan_def *chandef){
+                                             struct net_device *dev,
+                                             struct cfg80211_chan_def *chandef)
+{
+    return rwnx_cfg80211_set_monitor_channel(wiphy, dev, chandef);
+}
+#else
+int rwnx_cfg80211_set_monitor_channel_(struct wiphy *wiphy,
+                                             struct cfg80211_chan_def *chandef)
+{
     return rwnx_cfg80211_set_monitor_channel(wiphy, chandef);
 }
-
+#endif
 
 /**
  * @probe_client: probe an associated client, must return a cookie that it
@@ -3892,7 +3901,11 @@ static int rwnx_cfg80211_get_channel(struct wiphy *wiphy,
 
 	if (rwnx_vif->vif_index == rwnx_hw->monitor_vif) {
 		//retrieve channel from firmware
-		rwnx_cfg80211_set_monitor_channel(wiphy, NULL);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+        rwnx_cfg80211_set_monitor_channel(wiphy, wdev->netdev, NULL);
+#else
+        rwnx_cfg80211_set_monitor_channel(wiphy, NULL);
+#endif
 	}
 
 	//Check if channel context is valid
