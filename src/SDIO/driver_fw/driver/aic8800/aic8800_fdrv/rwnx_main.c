@@ -5180,8 +5180,8 @@ static struct cfg80211_ops rwnx_cfg80211_ops = {
 	.tdls_channel_switch = rwnx_cfg80211_tdls_channel_switch,
 	.tdls_cancel_channel_switch = rwnx_cfg80211_tdls_cancel_channel_switch,
 #endif
-	.tdls_mgmt = rwnx_cfg80211_tdls_mgmt,
-	.tdls_oper = rwnx_cfg80211_tdls_oper,
+	//.tdls_mgmt = rwnx_cfg80211_tdls_mgmt,
+	//.tdls_oper = rwnx_cfg80211_tdls_oper,
 	.change_bss = rwnx_cfg80211_change_bss,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0) || defined(CONFIG_WPA3_FOR_OLD_KERNEL)
 	.external_auth = rwnx_cfg80211_external_auth,
@@ -6043,7 +6043,9 @@ static void __exit rwnx_mod_exit(void)
 }
 
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
+#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
 #endif
 
