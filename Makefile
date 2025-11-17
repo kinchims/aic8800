@@ -11,8 +11,8 @@ build:
 	cd $(BUILD_DIR) && make
 
 
-install: build
-	cd $(BUILD_DIR) && make install
+modules_install: build
+	cd $(BUILD_DIR) && make modules_install
 
 uninstall:
 	cd $(BUILD_DIR) && make uninstall
