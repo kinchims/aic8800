@@ -3341,7 +3341,12 @@ static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *d
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	// Build the beacon
-	buf = rwnx_build_bcn(bcn, info);
+#if LINUX_VERSION_CODE > KERNEL_VERSION(6, 7, 0)
+    buf = rwnx_build_bcn(bcn, &info->beacon);
+#else
+    buf = rwnx_build_bcn(bcn, info);
+#endif
+
 	if (!buf)
 		return -ENOMEM;
 
@@ -3408,8 +3413,13 @@ static int rwnx_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
  * Also called internaly with chandef set to NULL simply to retrieve the channel
  * configured at firmware level.
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0))
+static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy, struct net_device *dev,
+                                             struct cfg80211_chan_def *chandef)
+#else
 static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
-											 struct cfg80211_chan_def *chandef)
+                                             struct cfg80211_chan_def *chandef)
+#endif
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
 	struct rwnx_vif *rwnx_vif;
