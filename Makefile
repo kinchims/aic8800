@@ -11,7 +11,7 @@ all: apply-patches build
 
 apply-patches:
 	quilt pop -a -f || true
-	quilt push -a
+	quilt push -a -f
 
 # Build the driver
 build:
