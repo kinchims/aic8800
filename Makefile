@@ -2,8 +2,16 @@
 BUILD_DIR = src/SDIO/driver_fw/driver/aic8800
 TARGET = aic8800_fdrv.ko
 
+export QUILT_PATCHES = ../../../debian/patches
+
+
+
 # Default target to build the driver
-all: build
+all: apply-patches build
+
+apply-patches:
+	quilt pop -a -f || true
+	quilt push -a
 
 # Build the driver
 build:

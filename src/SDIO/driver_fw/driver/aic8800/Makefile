@@ -11,15 +11,10 @@ obj-$(CONFIG_AIC_WLAN_SUPPORT) += aic8800_bsp/
 
 # Optional flags for compilation
 ccflags-y += -DANDROID_PLATFORM
-export QUILT_PATCHES = ../../../debian/patches
-
 
 
 # Build all modules
-all: apply-patches modules
-
-apply-patches:
-	quilt push -a
+all: modules
 
 modules:
 	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(TARGET_PREFIX) modules

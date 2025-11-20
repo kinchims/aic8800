@@ -787,7 +787,9 @@ static void rwnx_csa_finish(struct work_struct *ws)
 		} else
 			rwnx_txq_vif_stop(vif, RWNX_TXQ_STOP_CHAN, rwnx_hw);
 		spin_unlock_bh(&rwnx_hw->cb_lock);
-#if (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION3)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0))
+		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0);
+#elif (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION3)
 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0, 0);
 #elif (LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION)
 		cfg80211_ch_switch_notify(vif->ndev, &csa->chandef, 0);
@@ -1561,6 +1563,7 @@ static struct rwnx_vif *rwnx_interface_add(struct rwnx_hw *rwnx_hw,
 		vif->ap.mesh_pm = NL80211_MESH_POWER_ACTIVE;
 		vif->ap.next_mesh_pm = NL80211_MESH_POWER_ACTIVE;
 		// no break
+		__attribute__((__fallthrough__));
 	case NL80211_IFTYPE_AP:
 		INIT_LIST_HEAD(&vif->ap.sta_list);
 		memset(&vif->ap.bcn, 0, sizeof(vif->ap.bcn));
@@ -1660,7 +1663,11 @@ void aicwf_p2p_alive_timeout(struct timer_list *t)
 	rwnx_vif = (struct rwnx_vif *)data;
 	rwnx_hw = rwnx_vif->rwnx_hw;
 	#else
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+	rwnx_hw = timer_container_of(rwnx_hw, t, p2p_alive_timer);
+	#else
 	rwnx_hw = from_timer(rwnx_hw, t, p2p_alive_timer);
+	#endif
 	rwnx_vif = rwnx_hw->p2p_dev_vif;
 	#endif
 
@@ -1972,6 +1979,7 @@ static int rwnx_cfg80211_change_iface(struct wiphy *wiphy,
 		vif->ap.create_path = false;
 		vif->ap.generation = 0;
 		// no break
+		__attribute__((__fallthrough__));
 	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_P2P_GO:
 		INIT_LIST_HEAD(&vif->ap.sta_list);
@@ -2096,7 +2104,11 @@ static void rwnx_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev
 	if (rwnx_vif == rwnx_hw->p2p_dev_vif) {
 		rwnx_hw->is_p2p_alive = 0;
 		if (timer_pending(&rwnx_hw->p2p_alive_timer)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+			timer_delete_sync(&rwnx_hw->p2p_alive_timer);
+#else
 			del_timer_sync(&rwnx_hw->p2p_alive_timer);
+#endif
 		}
 
 		if (rwnx_vif->up) {
@@ -3320,8 +3332,13 @@ end:
  * @change_beacon: Change the beacon parameters for an access point mode
  *	interface. This should reject the call when AP mode wasn't started.
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
+									   struct cfg80211_ap_update *params)
+#else
 static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *dev,
 									   struct cfg80211_beacon_data *info)
+#endif
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
 	struct rwnx_vif *vif = netdev_priv(dev);
@@ -3334,7 +3351,11 @@ static int rwnx_cfg80211_change_beacon(struct wiphy *wiphy, struct net_device *d
 	RWNX_DBG(RWNX_FN_ENTRY_STR);
 
 	// Build the beacon
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 7, 0))
+	buf = rwnx_build_bcn(bcn, &params->beacon);
+#else
 	buf = rwnx_build_bcn(bcn, info);
+#endif
 	if (!buf)
 		return -ENOMEM;
 
@@ -3402,6 +3423,9 @@ static int rwnx_cfg80211_stop_ap(struct wiphy *wiphy, struct net_device *dev)
  * configured at firmware level.
  */
 static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 13, 0)
+											 struct net_device *,
+#endif
 											 struct cfg80211_chan_def *chandef)
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
@@ -3456,7 +3480,11 @@ static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
 
 int rwnx_cfg80211_set_monitor_channel_(struct wiphy *wiphy,
                                              struct cfg80211_chan_def *chandef){
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 13, 0)
+    return rwnx_cfg80211_set_monitor_channel(wiphy, NULL, chandef);
+#else
     return rwnx_cfg80211_set_monitor_channel(wiphy, chandef);
+#endif
 }
 
 
@@ -3513,7 +3541,11 @@ void rwnx_cfg80211_mgmt_frame_register(struct wiphy *wiphy,
  *	have changed. The actual parameter values are available in
  *	struct wiphy. If returning an error, no value should be changed.
  */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
 static int rwnx_cfg80211_set_wiphy_params(struct wiphy *wiphy, u32 changed)
+#else
+static int rwnx_cfg80211_set_wiphy_params(struct wiphy *wiphy, int radio_idx, u32 changed)
+#endif
 {
 	return 0;
 }
@@ -3527,7 +3559,11 @@ static int rwnx_cfg80211_set_wiphy_params(struct wiphy *wiphy, u32 changed)
  *	(as advertised by the nl80211 feature flag.)
  */
 static int rwnx_cfg80211_set_tx_power(struct wiphy *wiphy, struct wireless_dev *wdev,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
 									  enum nl80211_tx_power_setting type, int mbm)
+#else
+									  int radio_idx, enum nl80211_tx_power_setting type, int mbm)
+#endif
 {
 	struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
 	struct rwnx_vif *vif;
@@ -3557,6 +3593,13 @@ static int rwnx_cfg80211_set_tx_power(struct wiphy *wiphy, struct wireless_dev *
 static int rwnx_cfg80211_get_tx_power(struct wiphy *wiphy,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
  struct wireless_dev *wdev,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 14, 0)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
+ unsigned int link_id,
+#else
+ int radio_idx, unsigned int link_id,
+#endif
+#endif
 #endif
 	int *mbm)
 {
@@ -3875,7 +3918,11 @@ static int rwnx_cfg80211_get_channel(struct wiphy *wiphy,
 
 	if (rwnx_vif->vif_index == rwnx_hw->monitor_vif) {
 		//retrieve channel from firmware
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 13, 0)
+		rwnx_cfg80211_set_monitor_channel(wiphy, NULL, NULL);
+#else
 		rwnx_cfg80211_set_monitor_channel(wiphy, NULL);
+#endif
 	}
 
 	//Check if channel context is valid
@@ -3927,6 +3974,7 @@ static int rwnx_cfg80211_mgmt_tx(struct wiphy *wiphy, struct wireless_dev *wdev,
 	switch (RWNX_VIF_TYPE(rwnx_vif)) {
 	case NL80211_IFTYPE_AP_VLAN:
 		rwnx_vif = rwnx_vif->ap_vlan.master;
+		__attribute__((__fallthrough__));
 	case NL80211_IFTYPE_AP:
 	case NL80211_IFTYPE_P2P_GO:
 	case NL80211_IFTYPE_MESH_POINT:
@@ -4010,6 +4058,9 @@ int rwnx_cfg80211_start_radar_detection(struct wiphy *wiphy,
 										struct cfg80211_chan_def *chandef
 									#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
 										, u32 cac_time_ms
+									#endif
+									#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0))
+										, int link_id
 									#endif
 										)
 {
@@ -4151,7 +4202,9 @@ int rwnx_cfg80211_channel_switch (struct wiphy *wiphy,
 		goto end;
 	} else {
 		INIT_WORK(&csa->work, rwnx_csa_finish);
-#if LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION4
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 9, 0))
+		cfg80211_ch_switch_started_notify(dev, &csa->chandef, 0, params->count, false);
+#elif LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION4
 		cfg80211_ch_switch_started_notify(dev, &csa->chandef, 0, params->count, false, 0);
 #elif LINUX_VERSION_CODE >= HIGH_KERNEL_VERSION2
 		cfg80211_ch_switch_started_notify(dev, &csa->chandef, 0, params->count, false);
@@ -4179,6 +4232,9 @@ rwnx_cfg80211_tdls_mgmt(struct wiphy *wiphy,
 	const u8 *peer,
 #else
 	u8 *peer,
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0))
+	int link_id,
 #endif
 	u8 action_code,
 	u8 dialog_token,
@@ -4565,6 +4621,7 @@ static int rwnx_fill_station_info(struct rwnx_sta *sta, struct rwnx_vif *vif,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
 	case FORMATMOD_HE_MU:
 		sinfo->rxrate.he_ru_alloc = rx_vect1->he.ru_size;
+		__attribute__((__fallthrough__));
 	case FORMATMOD_HE_SU:
 	case FORMATMOD_HE_ER:
 		sinfo->rxrate.flags = RATE_INFO_FLAGS_HE_MCS;
@@ -5913,7 +5970,11 @@ void rwnx_cfg80211_deinit(struct rwnx_hw *rwnx_hw)
 		list_for_each_entry(defrag_ctrl, &rwnx_hw->defrag_list, list) {
 			list_del_init(&defrag_ctrl->list);
 			if (timer_pending(&defrag_ctrl->defrag_timer))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+				timer_delete_sync(&defrag_ctrl->defrag_timer);
+#else
 				del_timer_sync(&defrag_ctrl->defrag_timer);
+#endif
 			dev_kfree_skb(defrag_ctrl->skb);
 			kfree(defrag_ctrl);
 		}
@@ -6044,7 +6105,11 @@ static void __exit rwnx_mod_exit(void)
 
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
+#else
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
+#endif
 #endif
 
 module_init(rwnx_mod_init);

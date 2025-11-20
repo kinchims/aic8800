@@ -38,6 +38,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/reboot.h>
+#include <linux/compat.h>
 
 #include "aic_btusb.h"
 
@@ -1476,6 +1477,7 @@ static long btchr_ioctl(struct file *file_p,unsigned int cmd, unsigned long arg)
             return 1;
         case DWFW_CMPLT:
             AICBT_INFO(" btchr_ioctl DWFW_CMPLT");
+            __attribute__((__fallthrough__));
 #if 1
 	case SET_ISO_CFG:
             AICBT_INFO("btchr_ioctl SET_ISO_CFG");
@@ -1485,6 +1487,7 @@ static long btchr_ioctl(struct file *file_p,unsigned int cmd, unsigned long arg)
 		//hdev->voice_setting = *(uint16_t*)arg;
 		AICBT_INFO(" voice settings = %d", hdev->voice_setting);
 		//return 1;
+        __attribute__((__fallthrough__));
 #endif
         case GET_USB_INFO:
 			//ret = download_patch(fw_info,1);
@@ -1512,14 +1515,6 @@ static long btchr_ioctl(struct file *file_p,unsigned int cmd, unsigned long arg)
         return ret;
 
 }
-
-#ifdef CONFIG_PLATFORM_UBUNTU//AIDEN
-typedef u32		compat_uptr_t;
-static inline void __user *compat_ptr(compat_uptr_t uptr)
-{
-	return (void __user *)(unsigned long)uptr;
-}
-#endif
 
 #ifdef CONFIG_COMPAT
 static long compat_btchr_ioctl (struct file *filp, unsigned int cmd, unsigned long arg)
@@ -2417,7 +2412,7 @@ struct aicbsp_info_t aicbsp_info = {
 
 char aic_fw_path[FW_PATH_MAX];
 #if (CONFIG_BLUEDROID == 0)
-static const char* aic_default_fw_path = "/lib/firmware/aic8800DC";
+static const char* aic_default_fw_path = "/lib/firmware/aic8800_fw/USB/aic8800DC";
 #else
 static const char* aic_default_fw_path = "/vendor/etc/firmware";
 #endif
@@ -5502,7 +5497,11 @@ module_param(mp_drv_mode, int, 0644);
 MODULE_PARM_DESC(mp_drv_mode, "0: NORMAL; 1: MP MODE");
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
+#else
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
+#endif
 #endif
 
 MODULE_AUTHOR("AicSemi Corporation");

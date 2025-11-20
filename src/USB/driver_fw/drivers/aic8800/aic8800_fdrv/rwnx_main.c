@@ -1976,7 +1976,11 @@ void aicwf_p2p_alive_timeout(struct timer_list *t)
     rwnx_vif = (struct rwnx_vif *)data;
     rwnx_hw = rwnx_vif->rwnx_hw;
     #else
+    #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 16, 0)
+    rwnx_hw = timer_container_of(rwnx_hw, t, p2p_alive_timer);
+    #else
     rwnx_hw = from_timer(rwnx_hw, t, p2p_alive_timer);
+    #endif
     rwnx_vif = rwnx_hw->p2p_dev_vif;
     #endif
 
@@ -2616,7 +2620,11 @@ static void rwnx_cfgp2p_stop_p2p_device(struct wiphy *wiphy, struct wireless_dev
 	if (rwnx_vif == rwnx_hw->p2p_dev_vif) {
 		rwnx_hw->is_p2p_alive = 0;
 		if (timer_pending(&rwnx_hw->p2p_alive_timer)) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+			timer_delete_sync(&rwnx_hw->p2p_alive_timer);
+#else
 			del_timer_sync(&rwnx_hw->p2p_alive_timer);
+#endif
 		}
 		if (rwnx_vif->up) {
 			rwnx_send_remove_if(rwnx_hw, rwnx_vif->vif_index, true);
@@ -4011,6 +4019,9 @@ cfg80211_chandef_identical(const struct cfg80211_chan_def *chandef1,
 #endif
 
 static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 13, 0)
+					     struct net_device *,
+#endif
                                              struct cfg80211_chan_def *chandef)
 {
     struct rwnx_hw *rwnx_hw = wiphy_priv(wiphy);
@@ -4066,7 +4077,11 @@ static int rwnx_cfg80211_set_monitor_channel(struct wiphy *wiphy,
 
 int rwnx_cfg80211_set_monitor_channel_(struct wiphy *wiphy,
                                              struct cfg80211_chan_def *chandef){
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 13, 0)
+    return rwnx_cfg80211_set_monitor_channel(wiphy, NULL, chandef);
+#else
     return rwnx_cfg80211_set_monitor_channel(wiphy, chandef);
+#endif
 }
 
 
@@ -4127,7 +4142,11 @@ void rwnx_cfg80211_mgmt_frame_register(struct wiphy *wiphy,
  *	have changed. The actual parameter values are available in
  *	struct wiphy. If returning an error, no value should be changed.
  */
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(6,17,0))
 static int rwnx_cfg80211_set_wiphy_params(struct wiphy *wiphy, u32 changed)
+#else
+static int rwnx_cfg80211_set_wiphy_params(struct wiphy *wiphy, int radio_idx, u32 changed)
+#endif
 {
     return 0;
 }
@@ -4144,7 +4163,11 @@ static int rwnx_cfg80211_set_tx_power(struct wiphy *wiphy,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
  struct wireless_dev *wdev,
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6, 17, 0)
                                       enum nl80211_tx_power_setting type, int mbm)
+#else
+                                      int radio_idx, enum nl80211_tx_power_setting type, int mbm)
+#endif
 {
     #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
     struct wireless_dev *wdev = NULL;
@@ -4542,7 +4565,11 @@ static int rwnx_cfg80211_get_channel(struct wiphy *wiphy,
     if (rwnx_vif->vif_index == rwnx_hw->monitor_vif)
     {
         //retrieve channel from firmware
+#if LINUX_VERSION_CODE >= KERNEL_VERSION (6, 13, 0)
+        rwnx_cfg80211_set_monitor_channel(wiphy, NULL, NULL);
+#else
         rwnx_cfg80211_set_monitor_channel(wiphy, NULL);
+#endif
     }
 
     //Check if channel context is valid
@@ -4725,6 +4752,9 @@ int rwnx_cfg80211_start_radar_detection(struct wiphy *wiphy,
                                         struct cfg80211_chan_def *chandef
                                     #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 15, 0))
                                         , u32 cac_time_ms
+                                    #endif
+                                    #if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0))
+					, int link_id
                                     #endif
                                         )
 {
@@ -8704,7 +8734,11 @@ void rwnx_cfg80211_deinit(struct rwnx_hw *rwnx_hw)
         list_for_each_entry(defrag_ctrl, &rwnx_hw->defrag_list, list) {
             list_del_init(&defrag_ctrl->list);
             if (timer_pending(&defrag_ctrl->defrag_timer))
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 15, 0)
+                timer_delete_sync(&defrag_ctrl->defrag_timer);
+#else
                 del_timer_sync(&defrag_ctrl->defrag_timer);
+#endif
             dev_kfree_skb(defrag_ctrl->skb);
             kfree(defrag_ctrl);
         }
@@ -8821,7 +8855,11 @@ MODULE_PARM_DESC(wifi_mac_addr, "Configures mac addr.");
 module_init(rwnx_mod_init);
 module_exit(rwnx_mod_exit);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
+MODULE_IMPORT_NS("VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver");
+#else
 MODULE_IMPORT_NS(VFS_internal_I_am_really_a_filesystem_and_am_NOT_a_driver);
+#endif
 #endif
 MODULE_FIRMWARE(RWNX_CONFIG_FW_NAME);
 
