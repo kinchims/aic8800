@@ -12,8 +12,14 @@ obj-$(CONFIG_AIC_WLAN_SUPPORT) += aic8800_bsp/
 # Optional flags for compilation
 ccflags-y += -DANDROID_PLATFORM
 
+
+
+
 # Build all modules
-all: modules
+all: apply-patches modules
+
+apply-patches:
+	quilt push -a
 
 modules:
 	$(MAKE) -C $(KERNEL_SRC) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(TARGET_PREFIX) modules
