@@ -10,8 +10,8 @@ export QUILT_PATCHES = ./debian/patches
 all: apply-patches build
 
 apply-patches:
-	quilt pop -a -f || true
-	quilt push -a
+	quilt pop -a || true
+	quilt push -a || true
 
 # Build the driver
 build:
